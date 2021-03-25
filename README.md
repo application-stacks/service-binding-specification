@@ -37,6 +37,7 @@ Behavior within the project is governed by the [Contributor Covenant Code of Con
 
 <!-- Using https://github.com/yzhang-gh/vscode-markdown to manage toc -->
 - [Service Binding Specification for Kubernetes](#service-binding-specification-for-kubernetes)
+  - [Status](#status)
   - [Notational Conventions](#notational-conventions)
   - [Terminology definition](#terminology-definition)
 - [Provisioned Service](#provisioned-service)
@@ -44,8 +45,12 @@ Behavior within the project is governed by the [Contributor Covenant Code of Con
   - [Example Resource](#example-resource)
   - [Well-known Secret Entries](#well-known-secret-entries)
   - [Example Secret](#example-secret)
+  - [Considerations for Role-Based Access Control (RBAC)](#considerations-for-role-based-access-control-rbac)
+    - [Example Resource](#example-resource-1)
 - [Workload Projection](#workload-projection)
   - [Example Directory Structure](#example-directory-structure)
+  - [Considerations for Role-Based Access Control (RBAC)](#considerations-for-role-based-access-control-rbac-1)
+    - [Example Resource](#example-resource-2)
 - [Service Binding](#service-binding)
   - [Resource Type Schema](#resource-type-schema-1)
   - [Minimal Example Resource](#minimal-example-resource)
@@ -62,18 +67,19 @@ Behavior within the project is governed by the [Contributor Covenant Code of Con
   - [Element-based Example Resource](#element-based-example-resource)
   - [PodSpec-able (Default) Example Resource](#podspec-able-default-example-resource)
   - [Reconciler Implementation](#reconciler-implementation-1)
+- [Role-Based Access Control (RBAC)](#role-based-access-control-rbac)
+  - [Example Resource](#example-resource-3)
 - [Extensions](#extensions)
   - [Binding `Secret` Generation Strategies](#binding-secret-generation-strategies)
     - [OLM Operator Descriptors](#olm-operator-descriptors)
     - [Descriptor Examples](#descriptor-examples)
     - [Non-OLM Operator and Resource Annotations](#non-olm-operator-and-resource-annotations)
     - [Annotation Examples](#annotation-examples)
-  - [Role-Based Access Control (RBAC)](#role-based-access-control-rbac)
-    - [For Cluster Operators and CRD Authors](#for-cluster-operators-and-crd-authors)
-      - [Example Resource](#example-resource-1)
-    - [For Service Binding Implementors](#for-service-binding-implementors)
-      - [Example Resource](#example-resource-2)
 ---
+
+## Status
+
+This document is a pre-release, working draft of the Service Bindings for Kubernetes specification, representing the collective efforts of the [community](#community). It is published for early implementors and users to provide feedback. Any part of this spec may change before the spec reaches 1.0 with no promise of backwards compatibility.
 
 ## Notational Conventions
 
@@ -93,7 +99,7 @@ An implementation is not compliant if it fails to satisfy one or more of the MUS
   <dd>Any software that exposes functionality.  Examples include a database, a message broker, an workload with REST endpoints, an event stream, an Application Performance Monitor, or a Hardware Security Module.</dd>
 
   <dt>Workload</dt>
-  <dd>A <a href="https://kubernetes.io/docs/concepts/workloads/">workload</a> is an application running on Kubernetes.  Examples include a Spring Boot workload, a NodeJS Express workload, or a Ruby Rails workload.</dd>
+  <dd>A <a href="https://kubernetes.io/docs/concepts/workloads/">workload</a> is a running component of an application on Kubernetes.  Examples include a Spring Boot workload, a NodeJS Express workload, or a Ruby on Rails workload.</dd>
 
   <dt>Service Binding</dt>
   <dd>The act of or representation of the action of providing information about a Service to an Workload</dd>
@@ -162,6 +168,32 @@ stringData:
   password: root
 ```
 
+## Considerations for Role-Based Access Control (RBAC)
+
+Cluster operators and CRD authors **SHOULD** opt-in resources to expose provisioned services by defining a `ClusterRole` with a label matching `service.binding/controller=true`. The `get`, `list`, and `watch` verbs **MUST** be granted.
+
+See [Role-Based Access Control (RBAC)](#role-based-access-control-rbac) for how the `ClusterRole` is consumed.
+
+### Example Resource
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: awesome-service-bindings
+  labels:
+    service.binding/controller: "true" # matches the aggregation rule selector
+rules:
+- apiGroups:
+  - awesome.example.com
+  resources:
+  - awesomeservices
+  verbs:
+  - get
+  - list
+  - watch
+```
+
 # Workload Projection
 
 A Binding `Secret` **MUST** be volume mounted into a container at `$SERVICE_BINDING_ROOT/<binding-name>` with directory names matching the name of the binding.  Binding names **MUST** match `[a-z0-9\-\.]{1,253}`.  The `$SERVICE_BINDING_ROOT` environment variable **MUST** be declared and can point to any valid file system location.
@@ -190,15 +222,43 @@ $SERVICE_BINDING_ROOT
     └── private-key
 ```
 
+## Considerations for Role-Based Access Control (RBAC)
+
+Cluster operators and CRD authors **SHOULD** opt-in resources to binding projection by defining a `ClusterRole` with a label matching `service.binding/controller=true`. The `get`, `list`, `watch`, `update`, and `patch` verbs **MUST** be granted.
+
+See [Role-Based Access Control (RBAC)](#role-based-access-control-rbac) for how the `ClusterRole` is consumed.
+
+### Example Resource
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: awesome-service-bindings
+  labels:
+    service.binding/controller: "true" # matches the aggregation rule selector
+rules:
+- apiGroups:
+  - awesome.example.com
+  resources:
+  - awesomeworkloads
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - patch
+```
+
 # Service Binding
 
-A Service Binding describes the connection between a [Provisioned Service](#provisioned-service) and an [Workload Projection](#workload-projection).  It **MUST** be codified as a concrete resource type with API version `service.binding/v1alpha2` and kind `ServiceBinding`.  Multiple Service Bindings can refer to the same service.  Multiple Service Bindings can refer to the same workload.  An exemplar CRD can be found [here][sb-crd].
+A Service Binding describes the connection between a [Provisioned Service](#provisioned-service) and an [Workload Projection](#workload-projection).  It **MUST** be codified as a concrete resource type with API version `service.binding/v1alpha2` and kind `ServiceBinding`.  Multiple Service Bindings can refer to the same service.  Multiple Service Bindings can refer to the same workload.  For portability, the schema **MUST** comply to the exemplar CRD found [here][sb-crd].
 
 Restricting service binding to resources within the same namespace is strongly **RECOMMENDED**.  Implementations that choose to support cross-namespace service binding **SHOULD** provide a security model that prevents attacks like privilege escalation and secret enumeration, as well as a deterministic way to declare target namespaces.
 
 A Service Binding resource **MUST** define a `.spec.workload` which is an `ObjectReference`-like declaration.  A `ServiceBinding` **MAY** define the workload reference by-name or by-[label selector][ls]. A name and selector **MUST NOT** be defined in the same reference.  A Service Binding resource **MUST** define a `.spec.service` which is an `ObjectReference`-like declaration to a Provisioned Service-able resource.  Extensions and implementations **MAY** allow additional kinds of workloads and services to be referenced.
 
-The Service Binding resource **MAY** define `.spec.workload.containers`, as a list of integers or strings, to limit which containers in the workload are bound.  Binding to a container is opt-in, unless `.spec.workload.containers` is undefined then all containers **MUST** be bound.  For each item in the containers list:
+The Service Binding resource **MAY** define `.spec.workload.containers`, as a list of integers or strings, to limit which containers in the workload are bound.  Referencing containers by index is fragile in the presence of admission webhooks that inject sidecar containers.  It is **RECOMMENDED** to match containers by name. Binding to a container is opt-in, unless `.spec.workload.containers` is undefined then all containers **MUST** be bound.  For each item in the containers list:
 - if the value is an integer (`${containerInteger}`), the container matching by index (`.spec.template.spec.containers[${containerInteger}]`) **MUST** be bound. Init containers **MUST NOT** be bound
 - if the value is a string (`${containerString}`), a container or init container matching by name (`.spec.template.spec.containers[?(@.name=='${containerString}')]` or `.spec.template.spec.initContainers[?(@.name=='${containerString}')]`) **MUST** be bound
 - values that do not match a container or init container **SHOULD** be ignored
@@ -444,7 +504,7 @@ status:
 
 # Workload Resource Mapping
 
-An Workload Resource Mapping describes how to apply [Service Binding](#service-binding) transformations to an [Workload Projection](#workload-projection).  It **MUST** be codified as a concrete resource type with API version `service.binding/v1alpha2` and kind `ClusterWorkloadResourceMapping`.  An exemplar CRD can be found [here][cwrm-crd].
+An Workload Resource Mapping describes how to apply [Service Binding](#service-binding) transformations to an [Workload Projection](#workload-projection).  It **MUST** be codified as a concrete resource type with API version `service.binding/v1alpha2` and kind `ClusterWorkloadResourceMapping`.  For portability, the schema **MUST** comply to the exemplar CRD found [here][carm-crd].
 
 An Workload Resource Mapping **MUST** define its name using [CRD syntax][crd-syntax] (`<plural>.<group>`) for the resource that it defines a mapping for.  An Workload Resource Mapping **MUST** define a `.spec.versions` which is an array of `Version` objects.  A `Version` object must define a `version` entry that represents a version of the mapped resource.  The `version` entry **MAY** contain a `*` wildcard which indicates that this mapping should be used for any version that does not have a mapping explicitly defined for it.  A `Version` object **MAY** define `.containers`, as an array of strings containing [JSONPath][jsonpath], that describes the location of [`[]Container`][container] arrays in the target resource.  A `Version` object **MAY** define `.envs`, as an array of strings containing [JSONPath][jsonpath], that describes the location of [`[]EnvVar`][envvar] arrays in the target resource.  A `Version` object **MAY** define `.volumeMounts`, as an array of strings containing [JSONPath][jsonpath], that describes the location of [`[]VolumeMount`][volumemount] arrays in the target resource.  A `Version` object **MUST** define `.volumes`, as a string containing [JSONPath][jsonpath], that describes the location of [`[]Volume`][volume] arrays in the target resource.
 
@@ -538,6 +598,29 @@ If a `ClusterWorkloadResourceMapping` defines `.envs` and `.volumeMounts`, the r
 If a `ServiceBinding` specifies a `.spec.workloads.containers` value, and the value contains an `Int`-based index, that index **MUST** be used to filter the first entry in the `.containers` list and all other entries in those lists are ineligible for mapping.  If a `ServiceBinding` specifies a `.spec.workloads.containers` value, and the value contains an `string`-based index that index **MUST** be used to filter all entries in the `.containers` list.  If a `ServiceBinding` specifies a `.spec.workloads.containers` value and `ClusterWorkloadResourceMapping` for the mapped type defines `.envs` and `.volumeMounts`, the reconciler **MUST** fail to reconcile.
 
 A reconciler **MUST** apply the appropriate modification to the workload resource addressed by the `ServiceBinding` as defined by `.volumes`.
+
+# Role-Based Access Control (RBAC)
+
+Kubernetes clusters often utilize [Role-based access control (RBAC)][rbac] to authorize subjects to perform specific actions on resources. When operating in a cluster with RBAC enabled, the service binding reconciler needs permission to read resources that provisioned a service and write resources that services are projected into. This section defines a means for third-party CRD authors and cluster operators to expose resources to the service binding reconciler. Cluster operators **MAY** impose additional access controls beyond RBAC.
+
+If a service binding reconciler implementation is using Role-Based Access Control (RBAC) it **MUST** define an [aggregated `ClusterRole`][acr] with a label selector matching the label `service.binding/controller=true`. This `ClusterRole` **MUST** be bound (`RoleBinding` for a single namespace or `ClusterRoleBinding` if cluster-wide) to the subject the service binding reconciler runs as, typically a `ServiceAccount`.
+
+[rbac]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+[acr]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#aggregated-clusterroles
+
+## Example Resource
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ...
+aggregationRule:
+  clusterRoleSelectors:
+  - matchLabels:
+      service.binding/controller: "true"
+rules: [] # The control plane automatically fills in the rules
+```
 
 # Extensions
 
@@ -721,65 +804,3 @@ status:
     “service.binding/endpoints”:
       "path={.status.bootstrap},elementType=sliceOfMaps,sourceKey=type,sourceValue=url"
     ```
-
-## Role-Based Access Control (RBAC)
-
-Kubernetes clusters often utilize [Role-based access control (RBAC)][rbac] to authorize subjects to perform specific actions on resources. When operating in a cluster with RBAC enabled, the service binding reconciler needs permission to read resources that provisioned a service and write resources that services are projected into. This extension defines a means for third-party CRD authors and cluster operators to expose resources to the service binding reconciler. Cluster operators **MAY** impose additional access controls beyond RBAC.
-
-[rbac]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
-
-### For Cluster Operators and CRD Authors
-
-Cluster operators and CRD authors **MAY** opt-in resources to service binding by defining a `ClusterRole` with a label matching `service.binding/controller=true`. For Provisioned Service resources the `get`, `list`, and `watch` verbs **MUST** be granted. For Workload resources resources the `get`, `list`, `watch`, `update`, and `patch` verbs **MUST** be granted.
-
-#### Example Resource
-
-```yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: awesome-service-bindings
-  labels:
-    service.binding/controller: "true" # matches the aggregation rule selector
-rules:
-# for Provisioned Service resources only
-- apiGroups:
-  - awesome.example.com
-  resources:
-  - awesomeservices
-  verbs:
-  - get
-  - list
-  - watch
-# for Workload resources (also compatible with Provisioned Service resources)
-- apiGroups:
-  - awesome.example.com
-  resources:
-  - awesomeworkloads
-  verbs:
-  - get
-  - list
-  - watch
-  - update
-  - patch
-```
-
-### For Service Binding Implementors
-
-Service binding reconciler implementations **MUST** define an [aggregated `ClusterRole`][acr] with a label selector matching the label `service.binding/controller=true`. This `ClusterRole` **MUST** be bound (`RoleBinding` for a single namespace or `ClusterRoleBinding` if cluster-wide) to the subject the service binding reconciler runs as, typically a `ServiceAccount`.
-
-[acr]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#aggregated-clusterroles
-
-#### Example Resource
-
-```yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: ...
-aggregationRule:
-  clusterRoleSelectors:
-  - matchLabels:
-      service.binding/controller: "true"
-rules: [] # The control plane automatically fills in the rules
-```
