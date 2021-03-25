@@ -288,7 +288,7 @@ spec:
   type:                 # string, optional
   provider:             # string, optional
 
-  workload:          # ObjectReference-like
+  workload:             # ObjectReference-like
     apiVersion:         # string
     kind:               # string
     name:               # string, mutually exclusive with selector
