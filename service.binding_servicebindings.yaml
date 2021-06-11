@@ -42,60 +42,6 @@ spec:
           spec:
             description: ServiceBindingSpec defines the desired state of ServiceBinding
             properties:
-              application:
-                description: Application is a reference to an object
-                properties:
-                  apiVersion:
-                    description: API version of the referent.
-                    type: string
-                  containers:
-                    description: Containers describes which containers in a Pod should be bound to
-                    items:
-                      anyOf:
-                      - type: integer
-                      - type: string
-                      x-kubernetes-int-or-string: true
-                    type: array
-                  kind:
-                    description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-                    type: string
-                  name:
-                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
-                    type: string
-                  selector:
-                    description: Selector is a query that selects the application or applications to bind the service to
-                    properties:
-                      matchExpressions:
-                        description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
-                        items:
-                          description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
-                          properties:
-                            key:
-                              description: key is the label key that the selector applies to.
-                              type: string
-                            operator:
-                              description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
-                              type: string
-                            values:
-                              description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
-                              items:
-                                type: string
-                              type: array
-                          required:
-                          - key
-                          - operator
-                          type: object
-                        type: array
-                      matchLabels:
-                        additionalProperties:
-                          type: string
-                        description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
-                        type: object
-                    type: object
-                required:
-                - apiVersion
-                - kind
-                type: object
               env:
                 description: Env is the collection of mappings from Secret entries to environment variables
                 items:
@@ -129,10 +75,10 @@ spec:
                   type: object
                 type: array
               name:
-                description: Name is the name of the service as projected into the application container.  Defaults to .metadata.name.
+                description: Name is the name of the service as projected into the workload container.  Defaults to .metadata.name.
                 type: string
               provider:
-                description: Provider is the provider of the service as projected into the application container
+                description: Provider is the provider of the service as projected into the workload container
                 type: string
               service:
                 description: Service is a reference to an object that fulfills the ProvisionedService duck type
@@ -152,11 +98,65 @@ spec:
                 - name
                 type: object
               type:
-                description: Type is the type of the service as projected into the application container
+                description: Type is the type of the service as projected into the workload container
                 type: string
+              workload:
+                description: Workload is a reference to an object
+                properties:
+                  apiVersion:
+                    description: API version of the referent.
+                    type: string
+                  containers:
+                    description: Containers describes which containers in a Pod should be bound to
+                    items:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      x-kubernetes-int-or-string: true
+                    type: array
+                  kind:
+                    description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                    type: string
+                  name:
+                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                    type: string
+                  selector:
+                    description: Selector is a query that selects the workload or workloads to bind the service to
+                    properties:
+                      matchExpressions:
+                        description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                        items:
+                          description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                          properties:
+                            key:
+                              description: key is the label key that the selector applies to.
+                              type: string
+                            operator:
+                              description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                              type: string
+                            values:
+                              description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                              items:
+                                type: string
+                              type: array
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                        type: object
+                    type: object
+                required:
+                - apiVersion
+                - kind
+                type: object
             required:
-            - application
             - service
+            - workload
             type: object
           status:
             description: ServiceBindingStatus defines the observed state of ServiceBinding

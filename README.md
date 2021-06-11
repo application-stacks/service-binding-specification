@@ -1,8 +1,8 @@
 # Service Binding Specification for Kubernetes
 
-Today in Kubernetes, the exposure of secrets for connecting applications to external services such as REST APIs, databases, event buses, and many more is manual and bespoke.  Each service provider suggests a different way to access their secrets, and each application developer consumes those secrets in a custom way to their applications.  While there is a good deal of value to this flexibility level, large development teams lose overall velocity dealing with each unique solution.  To combat this, we already see teams adopting internal patterns for how to achieve this application-to-service linkage.
+Today in Kubernetes, the exposure of secrets for connecting application workloads to external services such as REST APIs, databases, event buses, and many more is manual and bespoke.  Each service provider suggests a different way to access their secrets, and each application developer consumes those secrets in a custom way to their workloads.  While there is a good deal of value to this flexibility level, large development teams lose overall velocity dealing with each unique solution.  To combat this, we already see teams adopting internal patterns for how to achieve this workload-to-service linkage.
 
-This specification aims to create a Kubernetes-wide specification for communicating service secrets to applications in an automated way.  It aims to create a widely applicable mechanism but _without_ excluding other strategies for systems that it does not fit easily.  The benefit of Kubernetes-wide specification is that all of the actors in an ecosystem can work towards a clearly defined abstraction at the edge of their expertise and depend on other parties to complete the chain.
+This specification aims to create a Kubernetes-wide specification for communicating service secrets to workloads in an automated way.  It aims to create a widely applicable mechanism but _without_ excluding other strategies for systems that it does not fit easily.  The benefit of Kubernetes-wide specification is that all of the actors in an ecosystem can work towards a clearly defined abstraction at the edge of their expertise and depend on other parties to complete the chain.
 
 * Application Developers expect their secrets to be exposed consistently and predictably.
 * Service Providers expect their secrets to be collected and exposed to users consistently and predictably.
@@ -50,7 +50,7 @@ Participation in the Kubernetes community is governed by the [Kubernetes Code of
   - [Example Secret](#example-secret)
   - [Considerations for Role-Based Access Control (RBAC)](#considerations-for-role-based-access-control-rbac)
     - [Example Resource](#example-resource-1)
-- [Application Projection](#application-projection)
+- [Workload Projection](#workload-projection)
   - [Example Directory Structure](#example-directory-structure)
   - [Considerations for Role-Based Access Control (RBAC)](#considerations-for-role-based-access-control-rbac-1)
     - [Example Resource](#example-resource-2)
@@ -64,7 +64,7 @@ Participation in the Kubernetes community is governed by the [Kubernetes Code of
     - [Ready Condition Status](#ready-condition-status)
 - [Direct Secret Reference](#direct-secret-reference)
   - [Direct Secret Reference Example Resource](#direct-secret-reference-example-resource)
-- [Application Resource Mapping](#application-resource-mapping)
+- [Workload Resource Mapping](#workload-resource-mapping)
   - [Resource Type Schema](#resource-type-schema-2)
   - [Container-based Example Resource](#container-based-example-resource)
   - [Element-based Example Resource](#element-based-example-resource)
@@ -99,13 +99,13 @@ An implementation is not compliant if it fails to satisfy one or more of the MUS
   <dd>Any type that meets the contract defined in a specification, without being an instance of a specific concrete type.  For example, for specification that requires a given key on <code>status</code>, any resource that has that key on its <code>status</code> regardless of its <code>kind</code> would be considered a duck type of the specification.</dd>
 
   <dt>Service</dt>
-  <dd>Any software that exposes functionality.  Examples include a database, a message broker, an application with REST endpoints, an event stream, an Application Performance Monitor, or a Hardware Security Module.</dd>
+  <dd>Any software that exposes functionality.  Examples include a database, a message broker, an workload with REST endpoints, an event stream, an Application Performance Monitor, or a Hardware Security Module.</dd>
 
-  <dt>Application</dt>
-  <dd>Any process, running within a container.  Examples include a Spring Boot application, a NodeJS Express application, or a Ruby Rails application.  <b>Note:</b> This is different than an umbrella application as defined by the Kubernetes SIG, which refers to a set of micro-services.</dd>
+  <dt>Workload</dt>
+  <dd>A <a href="https://kubernetes.io/docs/concepts/workloads/">workload</a> is a running component of an application on Kubernetes.  Examples include a Spring Boot workload, a NodeJS Express workload, or a Ruby on Rails workload.</dd>
 
   <dt>Service Binding</dt>
-  <dd>The act of or representation of the action of providing information about a Service to an Application</dd>
+  <dd>The act of or representation of the action of providing information about a Service to an Workload</dd>
 
   <dt>ConfigMap</dt>
   <dd>A Kubernetes <a href="https://kubernetes.io/docs/concepts/configuration/configmap/">ConfigMap</a></dd>
@@ -197,7 +197,7 @@ rules:
   - watch
 ```
 
-# Application Projection
+# Workload Projection
 
 A Binding `Secret` **MUST** be volume mounted into a container at `$SERVICE_BINDING_ROOT/<binding-name>` with directory names matching the name of the binding.  Binding names **MUST** match `[a-z0-9\-\.]{1,253}`.  The `$SERVICE_BINDING_ROOT` environment variable **MUST** be declared and can point to any valid file system location.
 
@@ -244,7 +244,7 @@ rules:
 - apiGroups:
   - awesome.example.com
   resources:
-  - awesomeapplications
+  - awesomeworkloads
   verbs:
   - get
   - list
@@ -255,22 +255,22 @@ rules:
 
 # Service Binding
 
-A Service Binding describes the connection between a [Provisioned Service](#provisioned-service) and an [Application Projection](#application-projection).  It **MUST** be codified as a concrete resource type with API version `service.binding/v1alpha2` and kind `ServiceBinding`.  Multiple Service Bindings can refer to the same service.  Multiple Service Bindings can refer to the same application.  For portability, the schema **MUST** comply to the exemplar CRD found [here][sb-crd].
+A Service Binding describes the connection between a [Provisioned Service](#provisioned-service) and an [Workload Projection](#workload-projection).  It **MUST** be codified as a concrete resource type with API version `service.binding/v1alpha2` and kind `ServiceBinding`.  Multiple Service Bindings can refer to the same service.  Multiple Service Bindings can refer to the same workload.  For portability, the schema **MUST** comply to the exemplar CRD found [here][sb-crd].
 
 Restricting service binding to resources within the same namespace is strongly **RECOMMENDED**.  Implementations that choose to support cross-namespace service binding **SHOULD** provide a security model that prevents attacks like privilege escalation and secret enumeration, as well as a deterministic way to declare target namespaces.
 
-A Service Binding resource **MUST** define a `.spec.application` which is an `ObjectReference`-like declaration.  A `ServiceBinding` **MAY** define the application reference by-name or by-[label selector][ls]. A name and selector **MUST NOT** be defined in the same reference.  A Service Binding resource **MUST** define a `.spec.service` which is an `ObjectReference`-like declaration to a Provisioned Service-able resource.  Extensions and implementations **MAY** allow additional kinds of applications and services to be referenced.
+A Service Binding resource **MUST** define a `.spec.workload` which is an `ObjectReference`-like declaration.  A `ServiceBinding` **MAY** define the workload reference by-name or by-[label selector][ls]. A name and selector **MUST NOT** be defined in the same reference.  A Service Binding resource **MUST** define a `.spec.service` which is an `ObjectReference`-like declaration to a Provisioned Service-able resource.  Extensions and implementations **MAY** allow additional kinds of workloads and services to be referenced.
 
-The Service Binding resource **MAY** define `.spec.application.containers`, as a list of integers or strings, to limit which containers in the application are bound.  Referencing containers by index is fragile in the presence of admission webhooks that inject sidecar containers.  It is **RECOMMENDED** to match containers by name. Binding to a container is opt-in, unless `.spec.application.containers` is undefined then all containers **MUST** be bound.  For each item in the containers list:
+The Service Binding resource **MAY** define `.spec.workload.containers`, as a list of integers or strings, to limit which containers in the workload are bound.  Referencing containers by index is fragile in the presence of admission webhooks that inject sidecar containers.  It is **RECOMMENDED** to match containers by name. Binding to a container is opt-in, unless `.spec.workload.containers` is undefined then all containers **MUST** be bound.  For each item in the containers list:
 - if the value is an integer (`${containerInteger}`), the container matching by index (`.spec.template.spec.containers[${containerInteger}]`) **MUST** be bound. Init containers **MUST NOT** be bound
 - if the value is a string (`${containerString}`), a container or init container matching by name (`.spec.template.spec.containers[?(@.name=='${containerString}')]` or `.spec.template.spec.initContainers[?(@.name=='${containerString}')]`) **MUST** be bound
 - values that do not match a container or init container **SHOULD** be ignored
 
-A Service Binding Resource **MAY** define a `.spec.mappings` which is an array of `Mapping` objects.  A `Mapping` object **MUST** define `name` and `value` entries.  The `value` of a `Mapping` **MUST** be handled as a [Go Template][gt] exposing binding `Secret` keys for substitution. The executed output of the template **MUST** be added to the `Secret` exposed to the resource represented by `application` as the key specified by the `name` of the `Mapping`.  If the `name` of a `Mapping` matches that of a Provisioned Service `Secret` key, the value from `Mapping` **MUST** be used for binding.
+A Service Binding Resource **MAY** define a `.spec.mappings` which is an array of `Mapping` objects.  A `Mapping` object **MUST** define `name` and `value` entries.  The `value` of a `Mapping` **MUST** be handled as a [Go Template][gt] exposing binding `Secret` keys for substitution. The executed output of the template **MUST** be added to the `Secret` exposed to the resource represented by `workload` as the key specified by the `name` of the `Mapping`.  If the `name` of a `Mapping` matches that of a Provisioned Service `Secret` key, the value from `Mapping` **MUST** be used for binding.
 
-A Service Binding Resource **MAY** define a `.spec.env` which is an array of `EnvMapping`.  An `EnvMapping` object **MUST** define `name` and `key` entries.  The `key` of an `EnvMapping` **MUST** refer to a binding `Secret` key name including any key defined by a `Mapping`.  The value of this `Secret` entry **MUST** be configured as an environment variable on the resource represented by `application`.
+A Service Binding Resource **MAY** define a `.spec.env` which is an array of `EnvMapping`.  An `EnvMapping` object **MUST** define `name` and `key` entries.  The `key` of an `EnvMapping` **MUST** refer to a binding `Secret` key name including any key defined by a `Mapping`.  The value of this `Secret` entry **MUST** be configured as an environment variable on the resource represented by `workload`.
 
-A Service Binding resource **MUST** define `.status.conditions` which is an array of `Condition` objects as defined in [meta/v1 Condition][mv1c].  At least one condition containing a `type` of `Ready` **MUST** be defined.  The `Ready` condition **SHOULD** contain appropriate values defined by the implementation.  As label selectors are inherently queries that return zero-to-many resources, it is **RECOMMENDED** that `ServiceBinding` authors use a combination of labels that yield a single resource, but implementors **MUST** handle each matching resource as if it was specified by name in a distinct `ServiceBinding` resource. Partial failures **MUST** be aggregated and reported on the binding status's `Ready` condition. A Service Binding resource **SHOULD** reflect the secret projected into the application as `.status.binding.name`.
+A Service Binding resource **MUST** define `.status.conditions` which is an array of `Condition` objects as defined in [meta/v1 Condition][mv1c].  At least one condition containing a `type` of `Ready` **MUST** be defined.  The `Ready` condition **SHOULD** contain appropriate values defined by the implementation.  As label selectors are inherently queries that return zero-to-many resources, it is **RECOMMENDED** that `ServiceBinding` authors use a combination of labels that yield a single resource, but implementors **MUST** handle each matching resource as if it was specified by name in a distinct `ServiceBinding` resource. Partial failures **MUST** be aggregated and reported on the binding status's `Ready` condition. A Service Binding resource **SHOULD** reflect the secret projected into the workload as `.status.binding.name`.
 
 [sb-crd]: service.binding_servicebindings.yaml
 [ls]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
@@ -291,7 +291,7 @@ spec:
   type:                 # string, optional
   provider:             # string, optional
 
-  application:          # ObjectReference-like
+  workload:             # ObjectReference-like
     apiVersion:         # string
     kind:               # string
     name:               # string, mutually exclusive with selector
@@ -326,7 +326,7 @@ kind: ServiceBinding
 metadata:
   name: account-service
 spec:
-  application:
+  workload:
     apiVersion: apps/v1
     kind:       Deployment
     name:       online-banking
@@ -355,7 +355,7 @@ metadata:
 spec:
   name: account-service
 
-  application:
+  workload:
     apiVersion: apps/v1
     kind:       Deployment
     selector:
@@ -385,7 +385,7 @@ kind: ServiceBinding
 metadata:
   name: account-service
 spec:
-  application:
+  workload:
     apiVersion: apps/v1
     kind:       Deployment
     name:       online-banking
@@ -418,7 +418,7 @@ kind: ServiceBinding
 metadata:
   name: account-service
 spec:
-  application:
+  workload:
     apiVersion: apps/v1
     kind:       Deployment
     name:       online-banking
@@ -455,19 +455,19 @@ status:
 
 ## Reconciler Implementation
 
-A Reconciler implementation for the `ServiceBinding` type is responsible for binding the Provisioned Service binding `Secret` into an Application.  The `Secret` referred to by `.status.binding` on the resource represented by `service` **MUST** be mounted as a volume on the resource represented by `application`.
+A Reconciler implementation for the `ServiceBinding` type is responsible for binding the Provisioned Service binding `Secret` into an Workload.  The `Secret` referred to by `.status.binding` on the resource represented by `service` **MUST** be mounted as a volume on the resource represented by `workload`.
 
 If a `.spec.name` is set, the directory name of the volume mount **MUST** be its value.  If a `.spec.name` is not set, the directory name of the volume mount **SHOULD** be the value of `.metadata.name`.
 
-If the `$SERVICE_BINDING_ROOT` environment variable has already been configured on the resource represented by `application`, the Provisioned Service binding `Secret` **MUST** be mounted relative to that location.  If the `$SERVICE_BINDING_ROOT` environment variable has not been configured on the resource represented by `application`, the `$SERVICE_BINDING_ROOT` environment variable **MUST** be set and the Provisioned Service binding `Secret` **MUST** be mounted relative to that location.  A **RECOMMENDED** value to use is `/bindings`.
+If the `$SERVICE_BINDING_ROOT` environment variable has already been configured on the resource represented by `workload`, the Provisioned Service binding `Secret` **MUST** be mounted relative to that location.  If the `$SERVICE_BINDING_ROOT` environment variable has not been configured on the resource represented by `workload`, the `$SERVICE_BINDING_ROOT` environment variable **MUST** be set and the Provisioned Service binding `Secret` **MUST** be mounted relative to that location.  A **RECOMMENDED** value to use is `/bindings`.
 
-The `$SERVICE_BINDING_ROOT` environment variable **MUST NOT** be reset if it is already configured on the resource represented by `application`.
+The `$SERVICE_BINDING_ROOT` environment variable **MUST NOT** be reset if it is already configured on the resource represented by `workload`.
 
 If a `.spec.type` is set, the `type` entry in the binding `Secret` **MUST** be set to its value overriding any existing value.  If a `.spec.provider` is set, the `provider` entry in the binding `Secret` **MUST** be set to its value overriding any existing value.
 
 ### Ready Condition Status
 
-If the modification of the Application resource is completed successfully, the `Ready` condition status **MUST** be set to `True`.  If the modification of the Application resource is not completed successfully the `Ready` condition status **MUST NOT** be set to `True`.
+If the modification of the Workload resource is completed successfully, the `Ready` condition status **MUST** be set to `True`.  If the modification of the Workload resource is not completed successfully the `Ready` condition status **MUST NOT** be set to `True`.
 
 # Direct Secret Reference
 
@@ -484,7 +484,7 @@ metadata:
   name: account-service
 
 spec:
-  application:
+  workload:
     apiVersion: apps/v1
     kind:       Deployment
     name:       online-banking
@@ -505,15 +505,15 @@ status:
     lastTransitionTime: '2021-01-20T17:00:00Z'
 ```
 
-# Application Resource Mapping
+# Workload Resource Mapping
 
-An Application Resource Mapping describes how to apply [Service Binding](#service-binding) transformations to an [Application Projection](#application-projection).  It **MUST** be codified as a concrete resource type with API version `service.binding/v1alpha2` and kind `ClusterApplicationResourceMapping`.  For portability, the schema **MUST** comply to the exemplar CRD found [here][carm-crd].
+An Workload Resource Mapping describes how to apply [Service Binding](#service-binding) transformations to an [Workload Projection](#workload-projection).  It **MUST** be codified as a concrete resource type with API version `service.binding/v1alpha2` and kind `ClusterWorkloadResourceMapping`.  For portability, the schema **MUST** comply to the exemplar CRD found [here][carm-crd].
 
-An Application Resource Mapping **MUST** define its name using [CRD syntax][crd-syntax] (`<plural>.<group>`) for the resource that it defines a mapping for.  An Application Resource Mapping **MUST** define a `.spec.versions` which is an array of `Version` objects.  A `Version` object must define a `version` entry that represents a version of the mapped resource.  The `version` entry **MAY** contain a `*` wildcard which indicates that this mapping should be used for any version that does not have a mapping explicitly defined for it.  A `Version` object **MAY** define `.containers`, as an array of strings containing [JSONPath][jsonpath], that describes the location of [`[]Container`][container] arrays in the target resource.  A `Version` object **MAY** define `.envs`, as an array of strings containing [JSONPath][jsonpath], that describes the location of [`[]EnvVar`][envvar] arrays in the target resource.  A `Version` object **MAY** define `.volumeMounts`, as an array of strings containing [JSONPath][jsonpath], that describes the location of [`[]VolumeMount`][volumemount] arrays in the target resource.  A `Version` object **MUST** define `.volumes`, as a string containing [JSONPath][jsonpath], that describes the location of [`[]Volume`][volume] arrays in the target resource.
+An Workload Resource Mapping **MUST** define its name using [CRD syntax][crd-syntax] (`<plural>.<group>`) for the resource that it defines a mapping for.  An Workload Resource Mapping **MUST** define a `.spec.versions` which is an array of `Version` objects.  A `Version` object must define a `version` entry that represents a version of the mapped resource.  The `version` entry **MAY** contain a `*` wildcard which indicates that this mapping should be used for any version that does not have a mapping explicitly defined for it.  A `Version` object **MAY** define `.containers`, as an array of strings containing [JSONPath][jsonpath], that describes the location of [`[]Container`][container] arrays in the target resource.  A `Version` object **MAY** define `.envs`, as an array of strings containing [JSONPath][jsonpath], that describes the location of [`[]EnvVar`][envvar] arrays in the target resource.  A `Version` object **MAY** define `.volumeMounts`, as an array of strings containing [JSONPath][jsonpath], that describes the location of [`[]VolumeMount`][volumemount] arrays in the target resource.  A `Version` object **MUST** define `.volumes`, as a string containing [JSONPath][jsonpath], that describes the location of [`[]Volume`][volume] arrays in the target resource.
 
-If an Application Resource Mapping defines `containers`, it **MUST NOT** define `.envs` and `.volumeMounts`.  If an Application resources does not define `containers`, it **MUST** define `.envs` and `.volumeMounts`.
+If an Workload Resource Mapping defines `containers`, it **MUST NOT** define `.envs` and `.volumeMounts`.  If an Workload resources does not define `containers`, it **MUST** define `.envs` and `.volumeMounts`.
 
-[carm-crd]: service.binding_clusterapplicationresourcemappings.yaml
+[cwrm-crd]: service.binding_clusterworkloadresourcemappings.yaml
 [container]: https://kubernetes.io/docs/reference/kubernetes-api/workloads-resources/container/
 [crd-syntax]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#create-a-customresourcedefinition
 [envvar]: https://kubernetes.io/docs/reference/kubernetes-api/workloads-resources/container/#environment-variables
@@ -525,7 +525,7 @@ If an Application Resource Mapping defines `containers`, it **MUST NOT** define 
 
 ```yaml
 apiVersion: service.binding/v1alpha2
-kind: ClusterApplicationResourceMapping
+kind: ClusterWorkloadResourceMapping
 metadata:
   name:                 # string
   generation:           # int64, defined by the Kubernetes control plane
@@ -543,7 +543,7 @@ spec:
 
 ```yaml
 apiVersion: service.binding/v1alpha2
-kind: ClusterApplicationResourceMapping
+kind: ClusterWorkloadResourceMapping
 metadata:
  name:  cronjobs.batch
 spec:
@@ -559,7 +559,7 @@ spec:
 
 ```yaml
 apiVersion: service.binding/v1alpha2
-kind: ClusterApplicationResourceMapping
+kind: ClusterWorkloadResourceMapping
 metadata:
  name:  cronjobs.batch
 spec:
@@ -578,7 +578,7 @@ spec:
 
 ```yaml
 apiVersion: service.binding/v1alpha2
-kind: ClusterApplicationResourceMapping
+kind: ClusterWorkloadResourceMapping
 metadata:
   name: deployments.apps
 spec:
@@ -592,15 +592,15 @@ spec:
 
 ## Reconciler Implementation
 
-A reconciler implementation **MUST** support mapping to PodSpec-able resources without defining a Application Resource Mapping for those types.  If no Application Resource Mapping exists for the `ServiceBinding` application resource type and the application resource is not PodSpec-able, the reconciliation **MUST** fail.
+A reconciler implementation **MUST** support mapping to PodSpec-able resources without defining a Workload Resource Mapping for those types.  If no Workload Resource Mapping exists for the `ServiceBinding` workload resource type and the workload resource is not PodSpec-able, the reconciliation **MUST** fail.
 
-If a `ClusterApplicationResourceMapping` defines `containers`, the reconciler **MUST** first resolve a set of candidate locations in the application resource addressed by the `ServiceBinding` using the `Container` type (`.envs`, `.volumeMounts`) for all available containers and then filter that collection by the `ServiceBinding` `.spec.application.containers` filter before applying the appropriate modification.
+If a `ClusterWorkloadResourceMapping` defines `containers`, the reconciler **MUST** first resolve a set of candidate locations in the workload resource addressed by the `ServiceBinding` using the `Container` type (`.envs`, `.volumeMounts`) for all available containers and then filter that collection by the `ServiceBinding` `.spec.workload.containers` filter before applying the appropriate modification.
 
-If a `ClusterApplicationResourceMapping` defines `.envs` and `.volumeMounts`, the reconciler **MUST** first resolve a set of candidate locations in the application resource addressed by the `ServiceBinding` for all available containers and then filter that collection by the `ServiceBinding` `.spec.application.containers` filter before applying the appropriate modification.
+If a `ClusterWorkloadResourceMapping` defines `.envs` and `.volumeMounts`, the reconciler **MUST** first resolve a set of candidate locations in the workload resource addressed by the `ServiceBinding` for all available containers and then filter that collection by the `ServiceBinding` `.spec.workload.containers` filter before applying the appropriate modification.
 
-If a `ServiceBinding` specifies a `.spec.applications.containers` value, and the value contains an `Int`-based index, that index **MUST** be used to filter the first entry in the `.containers` list and all other entries in those lists are ineligible for mapping.  If a `ServiceBinding` specifies a `.spec.applications.containers` value, and the value contains an `string`-based index that index **MUST** be used to filter all entries in the `.containers` list.  If a `ServiceBinding` specifies a `.spec.applications.containers` value and `ClusterApplicationResourceMapping` for the mapped type defines `.envs` and `.volumeMounts`, the reconciler **MUST** fail to reconcile.
+If a `ServiceBinding` specifies a `.spec.workloads.containers` value, and the value contains an `Int`-based index, that index **MUST** be used to filter the first entry in the `.containers` list and all other entries in those lists are ineligible for mapping.  If a `ServiceBinding` specifies a `.spec.workloads.containers` value, and the value contains an `string`-based index that index **MUST** be used to filter all entries in the `.containers` list.  If a `ServiceBinding` specifies a `.spec.workloads.containers` value and `ClusterWorkloadResourceMapping` for the mapped type defines `.envs` and `.volumeMounts`, the reconciler **MUST** fail to reconcile.
 
-A reconciler **MUST** apply the appropriate modification to the application resource addressed by the `ServiceBinding` as defined by `.volumes`.
+A reconciler **MUST** apply the appropriate modification to the workload resource addressed by the `ServiceBinding` as defined by `.volumes`.
 
 # Role-Based Access Control (RBAC)
 
@@ -631,7 +631,7 @@ Extensions are optional additions to the core specification as defined above.  I
 
 ## Binding `Secret` Generation Strategies
 
-Many services, especially initially, will not be Provisioned Service-compliant.  These services will expose the appropriate binding `Secret` information, but not in the way that the specification or applications expect.  Users should have a way of describing a mapping from existing data associated with arbitrary resources and CRDs to a representation of a binding `Secret`.
+Many services, especially initially, will not be Provisioned Service-compliant.  These services will expose the appropriate binding `Secret` information, but not in the way that the specification or workloads expect.  Users should have a way of describing a mapping from existing data associated with arbitrary resources and CRDs to a representation of a binding `Secret`.
 
 To handle the majority of existing resources and CRDs, `Secret` generation needs to support the following behaviors:
 
