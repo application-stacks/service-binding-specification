@@ -35,9 +35,8 @@ The application can retrieve the binding values through existing libraries avail
 The language binding API can create separate functions to retrieve bindings. For example, in Go:
 
 ```
-AllBindings() []map[string]string
-FilterBindings(_type string) []map[string]string
-FilterBindingsWithProvider(_type, provider string) []map[string]string
+Bindings(_type string) []map[string]string
+BindingsWithProvider(_type, provider string) []map[string]string
 ```
 
 Languages with function overloading can use a method with different parameters to retrieve bindings. For example, in Java:
