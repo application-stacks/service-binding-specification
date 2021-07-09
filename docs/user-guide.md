@@ -26,6 +26,8 @@ Files within each binding directory has a special file named `type`, and you can
 
 Service Binding specification mandates `type` field and recommends `provider` field in the binding Secret resource.  The provider field is recommended to support scenarios where there could be different providers for the same Provisioned Service type.  For example, if the type is `mysql`, the provider value could be `mariadb`, `oracle`, `bitnami`, `aws-rds`, etc.  When the application is reading the binding values, if necessary, the application could consider `type` and `provider` as a composite key to avoid ambiguity.  It will be helpful if an application needs to choose a particular provider based on the deployment environment.
 
+The operator autogenerates the binding directory name, and relying on the binding name is fragile.  So, it is not a good practice to use the binding name to look up the bindings.
+
 ### Programming language specific library APIs
 
 The application can retrieve the binding values through existing libraries available for your programming langauge of the choice.  The API should have a pattern described here.  This is not an exhaustive list of APIs.  Consult the library API documentation to confirm the behavior.
