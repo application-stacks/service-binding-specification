@@ -260,7 +260,9 @@ A Service Binding describes the connection between a [Provisioned Service](#prov
 
 Restricting service binding to resources within the same namespace is strongly **RECOMMENDED**.  Implementations that choose to support cross-namespace service binding **SHOULD** provide a security model that prevents attacks like privilege escalation and secret enumeration, as well as a deterministic way to declare target namespaces.
 
-A Service Binding resource **MUST** define a `.spec.application` which is an `ObjectReference`-like declaration.  A `ServiceBinding` **MAY** define the application reference by-name or by-[label selector][ls]. A name and selector **MUST NOT** be defined in the same reference.  A Service Binding resource **MUST** define a `.spec.service` which is an `ObjectReference`-like declaration to a Provisioned Service-able resource.  Extensions and implementations **MAY** allow additional kinds of applications and services to be referenced.
+A Service Binding resource **MUST** define a `.spec.application` which is an `ObjectReference`-like declaration.  A `ServiceBinding` **MAY** define the application reference by-name or by-[label selector][ls]. A name and selector **MUST NOT** be defined in the same reference.  A Service Binding resource **MUST** define a `.spec.service` which is an `ObjectReference`-like declaration to a Provisioned Service-able resource.  A `ServiceBinding` **MAY** define the service reference by-name or by-[label selector][ls].  Extensions and implementations **MAY** allow additional kinds of applications and services to be referenced.  
+
+As label selectors are inherently queries that return zero-to-many resources, implementation **MUST** select the first match and ignore any other matches.  Therefore it is **RECOMMENDED** that `ServiceBinding` authors use a combination of labels that yield a single resource.  
 
 The Service Binding resource **MAY** define `.spec.application.containers`, to limit which containers in the application are bound.  If `.spec.application.containers` is defined, the value **MUST** be a list of strings.  Binding to a container is opt-in, unless `.spec.application.containers` is undefined then all containers **MUST** be bound.  For each item in the containers list:
 - a container or init container matching by name (`.spec.template.spec.containers[?(@.name=='${containerString}')]` or `.spec.template.spec.initContainers[?(@.name=='${containerString}')]`) **MUST** be bound
@@ -268,7 +270,7 @@ The Service Binding resource **MAY** define `.spec.application.containers`, to l
 
 A Service Binding Resource **MAY** define a `.spec.env` which is an array of `EnvMapping`.  An `EnvMapping` object **MUST** define `name` and `key` entries.  The `key` of an `EnvMapping` **MUST** refer to a binding `Secret` key name.  The value of this `Secret` entry **MUST** be configured as an environment variable on the resource represented by `application`.
 
-A Service Binding resource **MUST** define `.status.conditions` which is an array of `Condition` objects as defined in [meta/v1 Condition][mv1c].  At least one condition containing a `type` of `Ready` **MUST** be defined.  The `Ready` condition **SHOULD** contain appropriate values defined by the implementation.  As label selectors are inherently queries that return zero-to-many resources, it is **RECOMMENDED** that `ServiceBinding` authors use a combination of labels that yield a single resource, but implementors **MUST** handle each matching resource as if it was specified by name in a distinct `ServiceBinding` resource. Partial failures **MUST** be aggregated and reported on the binding status's `Ready` condition. A Service Binding resource **SHOULD** reflect the secret projected into the application as `.status.binding.name`.
+A Service Binding resource **MUST** define `.status.conditions` which is an array of `Condition` objects as defined in [meta/v1 Condition][mv1c].  At least one condition containing a `type` of `Ready` **MUST** be defined.  The `Ready` condition **SHOULD** contain appropriate values defined by the implementation.  A Service Binding resource **SHOULD** reflect the secret projected into the application as `.status.binding.name`.
 
 [sb-crd]: service.binding_servicebindings.yaml
 [ls]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
@@ -299,7 +301,8 @@ spec:
   service:              # Provisioned Service resource ObjectReference-like
     apiVersion:         # string
     kind:               # string
-    name:               # string
+    name:               # string, mutually exclusive with selector
+    selector:           # metav1.LabelSelector, mutually exclusive with name
 
   env:                  # []EnvMapping, optional
   - name:               # string
@@ -360,7 +363,10 @@ spec:
   service:
     apiVersion: com.example/v1alpha1
     kind:       AccountService
-    name:       prod-account-service
+    selector:
+      matchLabels:
+        app.kubernetes.io/part-of: online-banking
+        app.kubernetes.io/component: backend
 
 status:
   conditions:
